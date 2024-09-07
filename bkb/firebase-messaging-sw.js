@@ -1,9 +1,5 @@
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"
-);
-importScripts(
-  "https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"
-);
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+importScripts('https://www.gstatic.com/firebasejs/8.10.1/firebase-messaging.js');
 
 firebase.initializeApp({
   apiKey: "AIzaSyCg6YEiauUXa9MN1F5Yng1q6ubU2Ca_0uw",
@@ -17,30 +13,14 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-self.addEventListener("install", (event) => {
-  console.log("Service Worker installing.");
-  self.skipWaiting();
-});
-
-self.addEventListener("activate", (event) => {
-  console.log("Service Worker activating.");
-  event.waitUntil(self.clients.claim());
-});
-
 messaging.onBackgroundMessage((payload) => {
-  console.log("Received background message:", payload);
-
-  const notificationTitle =
-    payload.notification.title || "Background Message Title";
+  console.log("Received background message ", payload);
+  // Customize notification here
+  const notificationTitle = payload.notification.title;
   const notificationOptions = {
-    body: payload.notification.body || "Background Message body.",
+    body: payload.notification.body,
     icon: "/firebase-logo.png",
   };
 
-  return self.registration.showNotification(
-    notificationTitle,
-    notificationOptions
-  );
+  self.registration.showNotification(notificationTitle, notificationOptions);
 });
-
-console.log("Firebase Messaging SW Loaded");

@@ -1,4 +1,4 @@
-// Your web app's Firebase configuration
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCg6YEiauUXa9MN1F5Yng1q6ubU2Ca_0uw",
   authDomain: "maeduca-ab166.firebaseapp.com",
@@ -12,13 +12,8 @@ const firebaseConfig = {
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-let messaging;
-try {
-  messaging = firebase.messaging();
-  console.log("Firebase Messaging initialized successfully");
-} catch (error) {
-  console.error("Error initializing Firebase Messaging:", error);
-}
+const messaging = firebase.messaging();
+const db = firebase.firestore();
 
 async function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
@@ -28,15 +23,6 @@ async function registerServiceWorker() {
         { scope: "/" }
       );
       console.log("Service Worker registered with scope:", registration.scope);
-
-      if (registration.installing) {
-        console.log("Service worker installing");
-      } else if (registration.waiting) {
-        console.log("Service worker installed");
-      } else if (registration.active) {
-        console.log("Service worker active");
-      }
-
       return registration;
     } catch (err) {
       console.error("Service Worker registration failed:", err);
@@ -47,34 +33,22 @@ async function registerServiceWorker() {
 }
 
 async function requestPermissionAndGetToken() {
-  console.log("Checking permission...");
-  let permission = Notification.permission;
-
-  if (permission !== "granted") {
-    console.log("Requesting permission...");
-    try {
-      permission = await Notification.requestPermission();
-    } catch (error) {
-      console.error("Error requesting permission:", error);
+  console.log("Requesting permission...");
+  try {
+    const permission = await Notification.requestPermission();
+    console.log("Permission:", permission);
+    if (permission === "granted") {
+      console.log("Notification permission granted.");
+      await getToken();
+    } else {
+      console.log("Unable to get permission to notify.");
     }
-  }
-
-  console.log("Permission:", permission);
-  if (permission === "granted") {
-    console.log("Notification permission granted.");
-    await getToken();
-  } else {
-    console.log("Unable to get permission to notify.");
-    localStorage.setItem("fcmPermission", "denied");
+  } catch (error) {
+    console.error("Error requesting permission:", error);
   }
 }
 
 async function getToken() {
-  if (!messaging) {
-    console.error("Firebase Messaging is not initialized");
-    return;
-  }
-
   try {
     const currentToken = await messaging.getToken({
       vapidKey:
@@ -82,52 +56,61 @@ async function getToken() {
     });
     if (currentToken) {
       console.log("Token:", currentToken);
-      document.getElementById(
-        "tokenArea"
-      ).textContent = `Token: ${currentToken}`;
-      localStorage.setItem("fcmToken", currentToken);
-      localStorage.setItem("fcmPermission", "granted");
-      // Send the token to your server here
+      await sendTokenToFirestore(currentToken);
     } else {
       console.log(
         "No registration token available. Request permission to generate one."
       );
-      localStorage.removeItem("fcmToken");
     }
   } catch (err) {
     console.error("An error occurred while retrieving token:", err);
-    localStorage.removeItem("fcmToken");
   }
 }
 
-// Setup message listener
-if (messaging) {
-  messaging.onMessage((payload) => {
-    console.log("Foreground message received:", payload);
-    // Handle the message here (e.g., show a notification)
-    const notificationTitle = payload.notification.title;
-    const notificationOptions = {
-      body: payload.notification.body,
-      icon: "/firebase-logo.png",
-    };
-    new Notification(notificationTitle, notificationOptions);
-  });
+async function sendTokenToFirestore(token) {
+  try {
+    const user = firebase.auth().currentUser;
+    if (user) {
+      await db.collection("users").doc(user.uid).set(
+        {
+          fcm_token: token,
+          updated_at: firebase.firestore.FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+      console.log("Token sent to Firestore successfully");
+    } else {
+      console.log("No user signed in, token not sent to Firestore");
+    }
+  } catch (error) {
+    console.error("Error sending token to Firestore:", error);
+  }
+}
+
+// Setup message listener for foreground messages
+messaging.onMessage((payload) => {
+  console.log("Foreground message received:", payload);
+  showToastNotification(payload.notification.title, payload.notification.body);
+});
+
+function showToastNotification(title, body) {
+  Toastify({
+    text: `${title}\n${body}`,
+    duration: 3000,
+    close: true,
+    gravity: "top",
+    position: "right",
+    backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+  }).showToast();
 }
 
 // Initialize everything when the page loads
 window.addEventListener("load", async () => {
   console.log("Page loaded, initializing FCM...");
   await registerServiceWorker();
-
-  const storedPermission = localStorage.getItem("fcmPermission");
-  const storedToken = localStorage.getItem("fcmToken");
-
-  if (storedPermission === "granted" && storedToken) {
-    console.log("Permission already granted and token exists");
-    document.getElementById("tokenArea").textContent = `Token: ${storedToken}`;
-  } else {
-    await requestPermissionAndGetToken();
-  }
+  document
+    .getElementById("requestPermission")
+    .addEventListener("click", requestPermissionAndGetToken);
 });
 
 console.log("Script loaded and initialized");

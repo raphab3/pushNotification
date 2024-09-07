@@ -11,25 +11,70 @@ const firebaseConfig = {
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+
+let messaging;
+try {
+  messaging = firebase.messaging();
+  console.log("Firebase Messaging initialized successfully");
+} catch (error) {
+  console.error("Error initializing Firebase Messaging:", error);
+}
+
+async function registerServiceWorker() {
+  if ("serviceWorker" in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.register(
+        "/firebase-messaging-sw.js",
+        { scope: "/" }
+      );
+      console.log("Service Worker registered with scope:", registration.scope);
+
+      if (registration.installing) {
+        console.log("Service worker installing");
+      } else if (registration.waiting) {
+        console.log("Service worker installed");
+      } else if (registration.active) {
+        console.log("Service worker active");
+      }
+
+      return registration;
+    } catch (err) {
+      console.error("Service Worker registration failed:", err);
+    }
+  } else {
+    console.log("Service workers are not supported in this browser");
+  }
+}
 
 async function requestPermissionAndGetToken() {
-  console.log("Requesting permission...");
-  try {
-    const permission = await Notification.requestPermission();
-    console.log("Permission:", permission);
-    if (permission === "granted") {
-      console.log("Notification permission granted.");
-      await getToken();
-    } else {
-      console.log("Unable to get permission to notify.");
+  console.log("Checking permission...");
+  let permission = Notification.permission;
+
+  if (permission !== "granted") {
+    console.log("Requesting permission...");
+    try {
+      permission = await Notification.requestPermission();
+    } catch (error) {
+      console.error("Error requesting permission:", error);
     }
-  } catch (error) {
-    console.error("Error requesting permission:", error);
+  }
+
+  console.log("Permission:", permission);
+  if (permission === "granted") {
+    console.log("Notification permission granted.");
+    await getToken();
+  } else {
+    console.log("Unable to get permission to notify.");
+    localStorage.setItem("fcmPermission", "denied");
   }
 }
 
 async function getToken() {
+  if (!messaging) {
+    console.error("Firebase Messaging is not initialized");
+    return;
+  }
+
   try {
     const currentToken = await messaging.getToken({
       vapidKey:
@@ -40,39 +85,49 @@ async function getToken() {
       document.getElementById(
         "tokenArea"
       ).textContent = `Token: ${currentToken}`;
+      localStorage.setItem("fcmToken", currentToken);
+      localStorage.setItem("fcmPermission", "granted");
       // Send the token to your server here
     } else {
       console.log(
         "No registration token available. Request permission to generate one."
       );
+      localStorage.removeItem("fcmToken");
     }
   } catch (err) {
     console.error("An error occurred while retrieving token:", err);
+    localStorage.removeItem("fcmToken");
   }
 }
 
-// Register service worker
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker
-    .register("/firebase-messaging-sw.js")
-    .then((registration) => {
-      console.log("Service Worker registered with scope:", registration.scope);
-      messaging.useServiceWorker(registration);
-    })
-    .catch((err) => {
-      console.error("Service Worker registration failed:", err);
-    });
+// Setup message listener
+if (messaging) {
+  messaging.onMessage((payload) => {
+    console.log("Foreground message received:", payload);
+    // Handle the message here (e.g., show a notification)
+    const notificationTitle = payload.notification.title;
+    const notificationOptions = {
+      body: payload.notification.body,
+      icon: "/firebase-logo.png",
+    };
+    new Notification(notificationTitle, notificationOptions);
+  });
 }
 
-// Setup click event on button
-document
-  .getElementById("requestPermission")
-  .addEventListener("click", requestPermissionAndGetToken);
+// Initialize everything when the page loads
+window.addEventListener("load", async () => {
+  console.log("Page loaded, initializing FCM...");
+  await registerServiceWorker();
 
-// Setup message listener
-messaging.onMessage((payload) => {
-  console.log("Message received:", payload);
-  // Handle the message here (e.g., show a notification)
+  const storedPermission = localStorage.getItem("fcmPermission");
+  const storedToken = localStorage.getItem("fcmToken");
+
+  if (storedPermission === "granted" && storedToken) {
+    console.log("Permission already granted and token exists");
+    document.getElementById("tokenArea").textContent = `Token: ${storedToken}`;
+  } else {
+    await requestPermissionAndGetToken();
+  }
 });
 
 console.log("Script loaded and initialized");
