@@ -90,17 +90,26 @@ async function sendTokenToFirestore(token) {
 // Setup message listener for foreground messages
 messaging.onMessage((payload) => {
   console.log("Foreground message received:", payload);
-  showToastNotification(payload.notification.title, payload.notification.body);
+  showToastNotification(
+    payload.notification.title,
+    payload.notification.body,
+    payload.notification.click_action
+  );
 });
 
-function showToastNotification(title, body) {
+function showToastNotification(title, body, clickAction) {
   Toastify({
     text: `${title}\n${body}`,
-    duration: 3000,
+    duration: 5000,
     close: true,
     gravity: "top",
     position: "right",
     backgroundColor: "linear-gradient(to right, #00b09b, #96c93d)",
+    onClick: function () {
+      if (clickAction) {
+        window.open(clickAction, "_blank");
+      }
+    },
   }).showToast();
 }
 

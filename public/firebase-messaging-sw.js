@@ -20,8 +20,20 @@ messaging.onBackgroundMessage((payload) => {
   const notificationTitle = payload.notification.title;
   const notificationOptions = {
     body: payload.notification.body,
-    icon: "/logo.png",
+    icon: "/logo.jpg",
+    data: {
+      click_action: payload.notification.click_action,
+    },
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+self.addEventListener("notificationclick", function (event) {
+  const clickAction = event.notification.data.click_action;
+  event.notification.close();
+
+  if (clickAction) {
+    event.waitUntil(clients.openWindow(clickAction));
+  }
 });
