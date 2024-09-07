@@ -9,9 +9,16 @@ const firebaseConfig = {
   measurementId: "G-LYC8F2RKMH",
 };
 
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
 
-const messaging = firebase.messaging();
+let messaging;
+try {
+  messaging = firebase.messaging();
+  console.log("Firebase Messaging initialized successfully");
+} catch (error) {
+  console.error("Error initializing Firebase Messaging:", error);
+}
 
 async function registerServiceWorker() {
   if ("serviceWorker" in navigator) {
@@ -30,11 +37,12 @@ async function registerServiceWorker() {
         console.log("Service worker active");
       }
 
-      messaging.useServiceWorker(registration);
       return registration;
     } catch (err) {
       console.error("Service Worker registration failed:", err);
     }
+  } else {
+    console.log("Service workers are not supported in this browser");
   }
 }
 
@@ -62,6 +70,11 @@ async function requestPermissionAndGetToken() {
 }
 
 async function getToken() {
+  if (!messaging) {
+    console.error("Firebase Messaging is not initialized");
+    return;
+  }
+
   try {
     const currentToken = await messaging.getToken({
       vapidKey:
@@ -88,16 +101,18 @@ async function getToken() {
 }
 
 // Setup message listener
-messaging.onMessage((payload) => {
-  console.log("Foreground message received:", payload);
-  // Handle the message here (e.g., show a notification)
-  const notificationTitle = payload.notification.title;
-  const notificationOptions = {
-    body: payload.notification.body,
-    icon: "/firebase-logo.png",
-  };
-  new Notification(notificationTitle, notificationOptions);
-});
+if (messaging) {
+  messaging.onMessage((payload) => {
+    console.log("Foreground message received:", payload);
+    // Handle the message here (e.g., show a notification)
+    const notificationTitle = payload.notification.title;
+    const notificationOptions = {
+      body: payload.notification.body,
+      icon: "/firebase-logo.png",
+    };
+    new Notification(notificationTitle, notificationOptions);
+  });
+}
 
 // Initialize everything when the page loads
 window.addEventListener("load", async () => {

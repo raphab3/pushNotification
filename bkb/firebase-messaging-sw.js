@@ -1,8 +1,8 @@
 importScripts(
-  "https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"
+  "https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"
 );
 importScripts(
-  "https://www.gstatic.com/firebasejs/9.0.0/firebase-messaging-compat.js"
+  "https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"
 );
 
 firebase.initializeApp({
@@ -19,10 +19,12 @@ const messaging = firebase.messaging();
 
 self.addEventListener("install", (event) => {
   console.log("Service Worker installing.");
+  self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
   console.log("Service Worker activating.");
+  event.waitUntil(self.clients.claim());
 });
 
 messaging.onBackgroundMessage((payload) => {
@@ -35,7 +37,10 @@ messaging.onBackgroundMessage((payload) => {
     icon: "/firebase-logo.png",
   };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+  return self.registration.showNotification(
+    notificationTitle,
+    notificationOptions
+  );
 });
 
 console.log("Firebase Messaging SW Loaded");
