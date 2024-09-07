@@ -11,6 +11,7 @@ const firebaseConfig = {
 
 // Initialize Firebase
 firebase.initializeApp(firebaseConfig)
+console.log("Firebase initialized - KKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKK");
 
 const messaging = firebase.messaging()
 

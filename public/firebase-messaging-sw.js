@@ -26,13 +26,16 @@ self.addEventListener("activate", (event) => {
 });
 
 messaging.onBackgroundMessage((payload) => {
-  console.log("Received background message ", payload);
+  console.log("Received background message:", payload);
 
-  const notificationTitle = payload.notification.title;
+  const notificationTitle =
+    payload.notification.title || "Background Message Title";
   const notificationOptions = {
-    body: payload.notification.body,
+    body: payload.notification.body || "Background Message body.",
     icon: "/firebase-logo.png",
   };
 
   self.registration.showNotification(notificationTitle, notificationOptions);
 });
+
+console.log("Firebase Messaging SW Loaded");
