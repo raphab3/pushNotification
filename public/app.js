@@ -54,7 +54,8 @@ async function requestPermissionAndGetToken() {
 async function getToken() {
   try {
     const currentToken = await messaging.getToken({
-      vapidKey: "BIVpqS5Lbbi8Fb4MPj_wGOMLkzWc03KbXGV2a4peMl9ObctEXM3oWxwFyOy-0puZbXUjwrco-OszaEq2MaX0T_c",
+      vapidKey:
+        "BIVpqS5Lbbi8Fb4MPj_wGOMLkzWc03KbXGV2a4peMl9ObctEXM3oWxwFyOy-0puZbXUjwrco-OszaEq2MaX0T_c",
     });
     if (currentToken) {
       console.log("Token:", currentToken);
@@ -62,6 +63,8 @@ async function getToken() {
         "tokenArea"
       ).textContent = `Token: ${currentToken}`;
       // Send the token to your server here
+      window.localStorage.setItem("token", currentToken);
+      console.log("Token stored in localStorage");
     } else {
       console.log(
         "No registration token available. Request permission to generate one."
